@@ -1,30 +1,231 @@
-# Estrutua Básica da Interface do Sistema (FELIPE)
-# 1. Criar a janela principal da interface gráfica utilizando o módulo tkinter.
-# 2. Criar o Layout inicial, com botões e campos de entrada para que o eleitor insira o número do título.
-# 3. Implementar o carregamento dos arquivos .pkl ou .csv contendo a lista de candidatos e eleitores.
-#   a. Carregar esses dados na inicialização do sistema, permitindo acesso aos dados durante a operação da urna.
-#   b. Usar o módulo pickle para arquivos .pkl e csv para arquivos .csv.
-# __________________________________________________________________________________________________________________
+import tkinter as tk
+from tkinter import messagebox
+import pickle
+import os
+from PIL import Image, ImageTk
 
-# Verificação do Eleitor e Exibição de Informações (GUSTAVO)
-# 1. Validar o título de eleitor inserido no campo de entrada:
-#   a. Verificar se o título do eleitor existe na lista de eleitores.
-#   b. Exibir os dados do eleitor (nome e título) na tela, se o título for encontrado.
-#   c. Caso o título não seja encontrado, exibir uma mensagem de erro pedindo um novo número.
-# __________________________________________________________________________________________________________________
 
-# Entrada e Validação do Voto (LEO)
-# 1. Implementar o campo para inserção do número do candidato ou seleção de voto branco/nulo.
-# 2. Criar um botão para confirmar o vot.
-# 3. Validar o número do candidato inserido:
-#   a. Verificar se o número corresponde a um candidato existente.
-#   b. Adicionar opções para voto branco e corrigir.
-#   c. Exibir dados do candidato (nome, número e foto) antes de confirmar o voto.
-# __________________________________________________________________________________________________________________
+def carregar_pkl(nome_arquivo):
+    if os.path.exists(nome_arquivo):
+        with open(nome_arquivo, "rb") as file:
+            return pickle.load(file)
+    else:
+        return []
 
-# Armazenamento do Voto e Reinicialização (PABLO)
-# 1. Computar o voto:
-#   a. Armazenar o voto em um arquivo .pkl, incluindo o número do eleitor e o candidato escolhido.
-#   b. Registrar e salvar os dados no arquivo .pkl com o total de votos de cada candidato, incluindo votos brancos e nulos.
-# 2. Reiniciar a interface para permitir que um novo eleitor insira seu título após a confirmação do voto anterior.
-#   a. Criar um mecanismo para reiniciar a tela de entrada após o voto.
+def salvar_pkl(nome_arquivo, dados):
+    with open(nome_arquivo, "wb") as file:
+        pickle.dump(dados, file)
+
+
+eleitores = carregar_pkl("eleitores.pkl")
+candidatos = carregar_pkl("candidatos.pkl")
+votos = carregar_pkl("votos.pkl")
+
+
+voto_atual = ""
+eleitor_atual = None
+tentativas = 0 
+
+
+def buscar_eleitor(titulo, cpf, rg):
+    global tentativas
+    for eleitor in eleitores:
+        if eleitor["titulo"] == titulo and eleitor["cpf"] == cpf and eleitor["rg"] == rg:
+            if eleitor not in votos: 
+                return eleitor
+            else:
+                messagebox.showerror("Erro", "Este eleitor já votou.")
+                return None
+    tentativas += 1
+    if tentativas >= 3:
+        messagebox.showerror("Erro", "Número máximo de tentativas excedido. Voto registrado como NULO.")
+        return None
+    messagebox.showerror("Erro", "Dados incorretos. Tente novamente.")
+    return None
+
+
+def buscar_candidato(numero):
+    for candidato in candidatos:
+        if candidato["numero"] == numero:
+            return candidato
+    return None
+
+
+def registrar_voto(numero_voto):
+    votos.append(numero_voto)
+    salvar_pkl("votos.pkl", votos)
+    messagebox.showinfo("Confirmação", "Voto registrado com sucesso!")
+
+
+def atualizar_tela(texto):
+    tela_label.config(text=texto)
+
+
+def adicionar_numero(numero):
+    global voto_atual
+    if len(voto_atual) < 2:
+        voto_atual += numero
+        atualizar_tela(voto_atual)
+        preencher_quadrados()
+
+
+def corrigir():
+    global voto_atual
+    voto_atual = ""
+    atualizar_tela("")
+    preencher_quadrados()
+
+
+def voto_branco():
+    registrar_voto("branco")
+    corrigir()
+
+
+def confirmar():
+    global voto_atual
+    global eleitor_atual
+    if not voto_atual:
+        messagebox.showerror("Erro", "Digite um número ou vote em branco.")
+        return
+    
+    candidato = buscar_candidato(voto_atual)
+    if candidato:
+        registrar_voto(voto_atual)
+        mostrar_informacoes_candidato(candidato)
+        messagebox.showinfo("Confirmação", f"Voto registrado para {candidato['nome']}")
+    else:
+        registrar_voto("nulo")
+        messagebox.showinfo("Confirmação", "Voto registrado como NULO.")
+    corrigir()
+    eleitor_atual = None  
+
+
+def mostrar_informacoes_candidato(candidato):
+    label_numero.config(text=f"NUMERO: {candidato['numero']}")
+    label_nome.config(text=f"CANDIDATO: {candidato['nome']}")
+    label_partido.config(text=f"PARTIDO: {candidato['partido']}")
+    
+    
+    imagem_candidato = Image.open(f"fotos/{candidato['numero']}.jpg")  
+    imagem_candidato = imagem_candidato.resize((100, 100))
+    img = ImageTk.PhotoImage(imagem_candidato)
+    
+    label_foto.config(image=img)
+    label_foto.image = img
+
+
+def solicitar_dados():
+    global eleitor_atual
+    titulo = entry_titulo.get()
+    cpf = entry_cpf.get()
+    rg = entry_rg.get()
+    
+    eleitor_atual = buscar_eleitor(titulo, cpf, rg)
+    if eleitor_atual:
+        atualizar_tela("Digite o número do candidato.")
+        frame_dados.pack_forget() 
+        criar_quadrados() 
+
+
+def preencher_quadrados():
+    global voto_atual
+    for i, quadrado in enumerate(quadrados):
+        if i < len(voto_atual):
+            quadrado.config(text=voto_atual[i])
+        else:
+            quadrado.config(text="[]")
+
+
+def criar_quadrados():
+    global voto_atual
+    voto_atual = ""
+
+    teclado_frame = tk.Frame(frame_dir)
+    teclado_frame.pack(pady=10)
+
+    
+    global quadrados
+    quadrados = []
+    for i in range(2):
+        quadrado = tk.Label(teclado_frame, text="[]", font=("Arial", 36), width=4, height=2, relief="solid")
+        quadrado.grid(row=0, column=i, padx=5, pady=5)
+        quadrados.append(quadrado)
+
+    
+    Bts = [
+        ("1", lambda: adicionar_numero("1")), ("2", lambda: adicionar_numero("2")), ("3", lambda: adicionar_numero("3")),
+        ("4", lambda: adicionar_numero("4")), ("5", lambda: adicionar_numero("5")), ("6", lambda: adicionar_numero("6")),
+        ("7", lambda: adicionar_numero("7")), ("8", lambda: adicionar_numero("8")), ("9", lambda: adicionar_numero("9")),
+        ("0", lambda: adicionar_numero("0"))
+    ]
+
+    for i, (txt, cmd) in enumerate(Bts):
+        btn = tk.Button(teclado_frame, text=txt, command=cmd, font=("Arial", 18), width=4, height=2)
+        btn.grid(row=i // 3, column=i % 3, padx=5, pady=5)
+
+    
+    frame_botoes = tk.Frame(frame_dir)
+    frame_botoes.pack(pady=10)
+
+    btn_branco = tk.Button(frame_botoes, text="BRANCO", command=voto_branco, font=("Arial", 14), bg="white", width=10)
+    btn_branco.pack(side=tk.LEFT, padx=10)
+
+    btn_confirmar = tk.Button(frame_botoes, text="CONFIRMAR", command=confirmar, font=("Arial", 14), bg="green", width=10)
+    btn_confirmar.pack(side=tk.LEFT, padx=10)
+
+    btn_corrigir = tk.Button(frame_botoes, text="CORRIGIR", command=corrigir, font=("Arial", 14), bg="yellow", width=10)
+    btn_corrigir.pack(side=tk.LEFT, padx=10)
+
+
+root = tk.Tk()
+root.title("Urna Eletrônica")
+root.geometry("700x500")
+
+
+frame_esq = tk.Frame(root, width=350, height=500, bg="black")
+frame_dir = tk.Frame(root, width=350, height=500)
+
+frame_esq.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+frame_dir.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+
+
+tela_label = tk.Label(frame_esq, text='Digite os dados do eleitor.', font=("Arial", 24), bg="white", anchor="center")
+tela_label.pack(fill=tk.BOTH, expand=True)
+
+
+frame_dados = tk.Frame(frame_esq)
+frame_dados.pack(pady=20)
+
+label_titulo = tk.Label(frame_dados, text="Título de Eleitor:", font=("Arial", 14))
+label_titulo.pack(pady=5)
+entry_titulo = tk.Entry(frame_dados, font=("Arial", 14))
+entry_titulo.pack(pady=5)
+
+label_cpf = tk.Label(frame_dados, text="CPF:", font=("Arial", 14))
+label_cpf.pack(pady=5)
+entry_cpf = tk.Entry(frame_dados, font=("Arial", 14))
+entry_cpf.pack(pady=5)
+
+label_rg = tk.Label(frame_dados, text="RG:", font=("Arial", 14))
+label_rg.pack(pady=5)
+entry_rg = tk.Entry(frame_dados, font=("Arial", 14))
+entry_rg.pack(pady=5)
+
+btn_confirmar_dados = tk.Button(frame_dados, text="Confirmar Dados", command=solicitar_dados, font=("Arial", 14), bg="blue", width=20)
+btn_confirmar_dados.pack(pady=10)
+
+
+label_foto = tk.Label(frame_esq, text="Foto", font=("Arial", 12), bg="white")
+label_foto.pack(pady=10)
+
+label_nome = tk.Label(frame_esq, text="Candidato: ", font=("Arial", 14), bg="white")
+label_nome.pack()
+
+label_numero = tk.Label(frame_esq, text="Número: ", font=("Arial", 14), bg="white")
+label_numero.pack()
+
+label_partido = tk.Label(frame_esq, text="Partido: ", font=("Arial", 14), bg="white")
+label_partido.pack()
+
+
+root.mainloop()
