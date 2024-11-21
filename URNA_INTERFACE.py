@@ -1,7 +1,8 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import Toplevel, messagebox
 import pickle
 import os
+import winsound
 from PIL import Image, ImageTk
 
 
@@ -12,6 +13,7 @@ def carregar_pkl(nome_arquivo):
     else:
         return []
 
+
 def salvar_pkl(nome_arquivo, dados):
     with open(nome_arquivo, "wb") as file:
         pickle.dump(dados, file)
@@ -21,17 +23,21 @@ eleitores = carregar_pkl("eleitores.pkl")
 candidatos = carregar_pkl("candidatos.pkl")
 votos = carregar_pkl("votos.pkl")
 
-
 voto_atual = ""
 eleitor_atual = None
-tentativas = 0 
+tentativas = 0
+
+
+def tocar_som_confirmacao():
+    
+    winsound.MessageBeep(winsound.MB_OK)
 
 
 def buscar_eleitor(titulo, cpf, rg):
     global tentativas
     for eleitor in eleitores:
         if eleitor["titulo"] == titulo and eleitor["cpf"] == cpf and eleitor["rg"] == rg:
-            if eleitor not in votos: 
+            if eleitor not in votos:
                 return eleitor
             else:
                 messagebox.showerror("Erro", "Este eleitor já votou.")
@@ -55,6 +61,7 @@ def registrar_voto(numero_voto):
     votos.append(numero_voto)
     salvar_pkl("votos.pkl", votos)
     messagebox.showinfo("Confirmação", "Voto registrado com sucesso!")
+    tocar_som_confirmacao()
 
 
 def atualizar_tela(texto):
@@ -87,7 +94,7 @@ def confirmar():
     if not voto_atual:
         messagebox.showerror("Erro", "Digite um número ou vote em branco.")
         return
-    
+
     candidato = buscar_candidato(voto_atual)
     if candidato:
         registrar_voto(voto_atual)
@@ -97,34 +104,23 @@ def confirmar():
         registrar_voto("nulo")
         messagebox.showinfo("Confirmação", "Voto registrado como NULO.")
     corrigir()
-    eleitor_atual = None  
+    eleitor_atual = None
+    abrir_janela_cadastro()
 
 
 def mostrar_informacoes_candidato(candidato):
     label_numero.config(text=f"NUMERO: {candidato['numero']}")
     label_nome.config(text=f"CANDIDATO: {candidato['nome']}")
     label_partido.config(text=f"PARTIDO: {candidato['partido']}")
-    
-    
-    imagem_candidato = Image.open(f"fotos/{candidato['numero']}.jpg")  
-    imagem_candidato = imagem_candidato.resize((100, 100))
-    img = ImageTk.PhotoImage(imagem_candidato)
-    
-    label_foto.config(image=img)
-    label_foto.image = img
 
-
-def solicitar_dados():
-    global eleitor_atual
-    titulo = entry_titulo.get()
-    cpf = entry_cpf.get()
-    rg = entry_rg.get()
-    
-    eleitor_atual = buscar_eleitor(titulo, cpf, rg)
-    if eleitor_atual:
-        atualizar_tela("Digite o número do candidato.")
-        frame_dados.pack_forget() 
-        criar_quadrados() 
+    try:
+        imagem_candidato = Image.open(f"fotos/{candidato['numero']}.jpg")
+        imagem_candidato = imagem_candidato.resize((100, 100))
+        img = ImageTk.PhotoImage(imagem_candidato)
+        label_foto.config(image=img)
+        label_foto.image = img
+    except FileNotFoundError:
+        label_foto.config(text="Imagem não encontrada", image=None)
 
 
 def preencher_quadrados():
@@ -143,7 +139,6 @@ def criar_quadrados():
     teclado_frame = tk.Frame(frame_dir)
     teclado_frame.pack(pady=10)
 
-    
     global quadrados
     quadrados = []
     for i in range(2):
@@ -151,7 +146,6 @@ def criar_quadrados():
         quadrado.grid(row=0, column=i, padx=5, pady=5)
         quadrados.append(quadrado)
 
-    
     Bts = [
         ("1", lambda: adicionar_numero("1")), ("2", lambda: adicionar_numero("2")), ("3", lambda: adicionar_numero("3")),
         ("4", lambda: adicionar_numero("4")), ("5", lambda: adicionar_numero("5")), ("6", lambda: adicionar_numero("6")),
@@ -163,7 +157,6 @@ def criar_quadrados():
         btn = tk.Button(teclado_frame, text=txt, command=cmd, font=("Arial", 18), width=4, height=2)
         btn.grid(row=i // 3, column=i % 3, padx=5, pady=5)
 
-    
     frame_botoes = tk.Frame(frame_dir)
     frame_botoes.pack(pady=10)
 
@@ -177,10 +170,48 @@ def criar_quadrados():
     btn_corrigir.pack(side=tk.LEFT, padx=10)
 
 
+def abrir_janela_cadastro():
+    
+    global eleitor_atual
+
+    janela_cadastro = Toplevel(root)
+    janela_cadastro.title("Cadastro de Eleitor")
+    janela_cadastro.geometry("400x300+500+300")
+
+    def confirmar_dados():
+        global eleitor_atual
+        titulo = entry_titulo.get()
+        cpf = entry_cpf.get()
+        rg = entry_rg.get()
+        eleitor_atual = buscar_eleitor(titulo, cpf, rg)
+        if eleitor_atual:
+            atualizar_tela("Digite o número do candidato.")
+            janela_cadastro.destroy()
+            criar_quadrados()
+
+    label_titulo = tk.Label(janela_cadastro, text="Título de Eleitor:", font=("Arial", 14))
+    label_titulo.pack(pady=5)
+    entry_titulo = tk.Entry(janela_cadastro, font=("Arial", 14))
+    entry_titulo.pack(pady=5)
+
+    label_cpf = tk.Label(janela_cadastro, text="CPF:", font=("Arial", 14))
+    label_cpf.pack(pady=5)
+    entry_cpf = tk.Entry(janela_cadastro, font=("Arial", 14))
+    entry_cpf.pack(pady=5)
+
+    label_rg = tk.Label(janela_cadastro, text="RG:", font=("Arial", 14))
+    label_rg.pack(pady=5)
+    entry_rg = tk.Entry(janela_cadastro, font=("Arial", 14))
+    entry_rg.pack(pady=5)
+
+    btn_confirmar = tk.Button(janela_cadastro, text="Confirmar", command=confirmar_dados, font=("Arial", 14), bg="blue")
+    btn_confirmar.pack(pady=20)
+
+
 root = tk.Tk()
 root.title("Urna Eletrônica")
 root.geometry("700x500")
-
+root.resizable(False, False)
 
 frame_esq = tk.Frame(root, width=350, height=500, bg="black")
 frame_dir = tk.Frame(root, width=350, height=500)
@@ -188,32 +219,8 @@ frame_dir = tk.Frame(root, width=350, height=500)
 frame_esq.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 frame_dir.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
 
-
-tela_label = tk.Label(frame_esq, text='Digite os dados do eleitor.', font=("Arial", 24), bg="white", anchor="center")
+tela_label = tk.Label(frame_esq, text='Urna Eletrônica', font=("Arial", 24), bg="white", anchor="center")
 tela_label.pack(fill=tk.BOTH, expand=True)
-
-
-frame_dados = tk.Frame(frame_esq)
-frame_dados.pack(pady=20)
-
-label_titulo = tk.Label(frame_dados, text="Título de Eleitor:", font=("Arial", 14))
-label_titulo.pack(pady=5)
-entry_titulo = tk.Entry(frame_dados, font=("Arial", 14))
-entry_titulo.pack(pady=5)
-
-label_cpf = tk.Label(frame_dados, text="CPF:", font=("Arial", 14))
-label_cpf.pack(pady=5)
-entry_cpf = tk.Entry(frame_dados, font=("Arial", 14))
-entry_cpf.pack(pady=5)
-
-label_rg = tk.Label(frame_dados, text="RG:", font=("Arial", 14))
-label_rg.pack(pady=5)
-entry_rg = tk.Entry(frame_dados, font=("Arial", 14))
-entry_rg.pack(pady=5)
-
-btn_confirmar_dados = tk.Button(frame_dados, text="Confirmar Dados", command=solicitar_dados, font=("Arial", 14), bg="blue", width=20)
-btn_confirmar_dados.pack(pady=10)
-
 
 label_foto = tk.Label(frame_esq, text="Foto", font=("Arial", 12), bg="white")
 label_foto.pack(pady=10)
@@ -227,5 +234,5 @@ label_numero.pack()
 label_partido = tk.Label(frame_esq, text="Partido: ", font=("Arial", 14), bg="white")
 label_partido.pack()
 
-
+abrir_janela_cadastro()
 root.mainloop()
