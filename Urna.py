@@ -265,7 +265,7 @@ class Urna:
 
 
     def mostrar_informacoes_candidato(self, candidato: dict):
-        self.label_numero.config(text=f"NUMERO: {candidato['numero']}")
+        self.label_numero.config(text=f"NÚMERO: {candidato['numero']}")
         self.label_nome.config(text=f"CANDIDATO: {candidato['nome']}")
         self.label_partido.config(text=f"PARTIDO: {candidato['partido']}")
 
@@ -280,9 +280,9 @@ class Urna:
         self.label_foto.image = img
 
     def candidato_default(self, texto: str):
-        self.label_numero.config(text="Numero: "+texto)
-        self.label_nome.config(text="Candidato: "+texto)
-        self.label_partido.config(text="Partido: "+texto)
+        self.label_numero.config(text="NÚMERO: "+texto)
+        self.label_nome.config(text="CANDIDATO: "+texto)
+        self.label_partido.config(text="PARTIDO: "+texto)
 
         imagem_candidato = Image.open(f"imagens/no-image.png")
         imagem_candidato = imagem_candidato.resize((100, 100))
