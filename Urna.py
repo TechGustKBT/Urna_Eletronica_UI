@@ -35,6 +35,8 @@ class Urna:
     frame_botoes: tk.Frame
 
     def __init__(self):
+        if not os.path.exists("pickle_files"):
+            os.makedirs("pickle_files")
         if not os.path.exists("pickle_files/candidatos.pkl"):
             self.criar_candidatos()
         if not os.path.exists("pickle_files/eleitores.pkl"):
