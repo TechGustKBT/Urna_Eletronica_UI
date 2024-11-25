@@ -124,7 +124,9 @@ class Urna:
         candidatos = [
             {"nome": "Candidato A", "numero": "10", "partido": "Partido X"},
             {"nome": "Candidato B", "numero": "20", "partido": "Partido Y"},
-            {"nome": "Candidato C", "numero": "30", "partido": "Partido Z"}
+            {"nome": "Candidato C", "numero": "30", "partido": "Partido Z"},
+            {"nome": "Candidato D", "numero": "40", "partido": "Partido Alfa"},
+            {"nome": "Candidato E", "numero": "50", "partido": "Partido Omega"}
         ]
 
         with open("pickle_files/candidatos.pkl", "wb") as file:
@@ -137,7 +139,8 @@ class Urna:
         eleitores = [
             {"nome": "João Silva", "titulo": "12345", "cpf": "111.222.333-44", "rg": "MG1234567"},
             {"nome": "Maria Oliveira", "titulo": "67890", "cpf": "555.666.777-88", "rg": "SP2345678"},
-            {"nome": "Carlos Souza", "titulo": "54321", "cpf": "999.000.111-22", "rg": "RJ3456789"}
+            {"nome": "Carlos Souza", "titulo": "54321", "cpf": "999.000.111-22", "rg": "RJ3456789"},
+            {"nome": "Pablo da Silva", "titulo": "09876", "cpf": "333.444.555-66", "rg": "BH4567890"},
         ]
 
         with open("pickle_files/eleitores.pkl", "wb") as file:
