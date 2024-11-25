@@ -157,10 +157,16 @@ class Urna:
             pickle.dump(dados, file)
 
     def tocar_som_confirmacao(self):
-        winsound.PlaySound("audio/urna_confirma.wav", winsound.SND_FILENAME | winsound.SND_ASYNC)
+        try:
+            winsound.PlaySound("audio/urna_confirma.wav", winsound.SND_FILENAME | winsound.SND_ASYNC)
+        except Exception as e:
+            print(e)
 
     def tocar_som_tecla(self):
-        winsound.PlaySound("audio/urna_tecla.wav", winsound.SND_FILENAME | winsound.SND_ASYNC)
+        try:
+            winsound.PlaySound("audio/urna_tecla.wav", winsound.SND_FILENAME | winsound.SND_ASYNC)
+        except Exception as e:
+            print(e)
 
     def buscar_eleitor(self, titulo: str, cpf: str, rg: str):
         for eleitor in self.getEleitores():
