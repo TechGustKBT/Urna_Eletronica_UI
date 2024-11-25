@@ -229,7 +229,7 @@ class Urna:
             
     def corrigir(self):
         self.setVotoAtual("")
-        self.atualizar_tela("")
+        self.atualizar_tela("Eleitor: "+self.getEleitorAtual()["nome"])
         self.candidato_default("Não Selecionado")
         self.preencher_quadrados()
 
@@ -278,9 +278,9 @@ class Urna:
         self.label_partido.config(text=f"PARTIDO: {candidato['partido']}")
 
         try:
-            imagem_candidato = Image.open(f"imagens/{candidato['numero']}.png")
+            imagem_candidato = Image.open(f"image/{candidato['numero']}.png")
         except FileNotFoundError:
-            imagem_candidato = Image.open(f"imagens/no-image.png")
+            imagem_candidato = Image.open(f"image/no-image.png")
 
         imagem_candidato = imagem_candidato.resize((100, 100))
         img = ImageTk.PhotoImage(imagem_candidato)
@@ -292,7 +292,7 @@ class Urna:
         self.label_nome.config(text="CANDIDATO: "+texto)
         self.label_partido.config(text="PARTIDO: "+texto)
 
-        imagem_candidato = Image.open(f"imagens/no-image.png")
+        imagem_candidato = Image.open(f"image/no-image.png")
         imagem_candidato = imagem_candidato.resize((100, 100))
         img = ImageTk.PhotoImage(imagem_candidato)
         self.label_foto.config(image=img)
