@@ -35,9 +35,13 @@ class Urna:
     frame_botoes: tk.Frame
 
     def __init__(self):
-        self.setEleitores(self.carregar_pkl("eleitores.pkl"))
-        self.setCandidatos(self.carregar_pkl("candidatos.pkl"))
-        self.setVotos(self.carregar_pkl("votos.pkl"))
+        if not os.path.exists("pickle_files/candidatos.pkl"):
+            self.criar_candidatos()
+        if not os.path.exists("pickle_files/eleitores.pkl"):
+            self.criar_eleitores()
+        self.setEleitores(self.carregar_pkl("pickle_files/eleitores.pkl"))
+        self.setCandidatos(self.carregar_pkl("pickle_files/candidatos.pkl"))
+        self.setVotos(self.carregar_pkl("pickle_files/votos.pkl"))
         self.setVotoAtual("")
         self.setEleitorAtual(None)
         self.setTentativas(0)
@@ -81,12 +85,31 @@ class Urna:
     def addTentativa(self):
         self.tentativas += 1
 
+    def contar_votos_por_candidato(self):
+        contagem = {}
+        for voto in self.votos:
+            candidato = voto.get("nome", "NULO")
+            if candidato in contagem:
+                contagem[candidato] += 1
+            else:
+                contagem[candidato] = 1
+        return contagem
+
     def addVoto(self, voto: dict):
+        self.tocar_som_confirmacao()
+        voto["eleitor"] = self.getEleitorAtual()["titulo"]
         self.votos.append(voto)
-        self.salvar_pkl("votos.pkl", self.votos)
-        with open("votos.pkl", "rb") as file:
-           votos = pickle.load(file)
-        messagebox.showinfo("Votos", str(votos))
+        self.salvar_pkl("pickle_files/votos.pkl", self.votos)
+
+        contagem_votos = self.contar_votos_por_candidato()
+        total_votos = ""
+        for candidato, total_votos_candidato in contagem_votos.items():
+            total_votos += f"{candidato}: {total_votos_candidato}\n"
+
+        if voto["nome"] == "BRANCO" or voto["nome"] == "NULO":
+            messagebox.showinfo("Voto registrado", f"Voto {voto['nome']} registrado com sucesso!\n{total_votos}")
+        else:
+            messagebox.showinfo("Voto registrado", f"Voto para '{voto['nome']}' registrado com sucesso!\n{total_votos}")
 
     def setQuadrados(self, quadrados: list):
         self.quadrados = quadrados
@@ -95,25 +118,27 @@ class Urna:
         return self.quadrados
 
     def criar_candidatos(self):
+        messagebox.showinfo("Criando candidatos", "arquivo candidatos.pkl não encontrado, criando candidatos padrão")
         candidatos = [
             {"nome": "Candidato A", "numero": "10", "partido": "Partido X"},
             {"nome": "Candidato B", "numero": "20", "partido": "Partido Y"},
             {"nome": "Candidato C", "numero": "30", "partido": "Partido Z"}
         ]
 
-        with open("candidatos.pkl", "wb") as file:
+        with open("pickle_files/candidatos.pkl", "wb") as file:
             pickle.dump(candidatos, file)
 
         print("Arquivo candidatos.pkl criado com sucesso!")
 
     def criar_eleitores(self):
+        messagebox.showinfo("Criando eleitores", "arquivo eleitores.pkl não encontrado, criando eleitores padrão")
         eleitores = [
             {"nome": "João Silva", "titulo": "12345", "cpf": "111.222.333-44", "rg": "MG1234567"},
             {"nome": "Maria Oliveira", "titulo": "67890", "cpf": "555.666.777-88", "rg": "SP2345678"},
             {"nome": "Carlos Souza", "titulo": "54321", "cpf": "999.000.111-22", "rg": "RJ3456789"}
         ]
 
-        with open("eleitores.pkl", "wb") as file:
+        with open("pickle_files/eleitores.pkl", "wb") as file:
             pickle.dump(eleitores, file)
 
         print("Arquivo eleitores.pkl criado com sucesso!")
@@ -130,21 +155,25 @@ class Urna:
             pickle.dump(dados, file)
 
     def tocar_som_confirmacao(self):
-        winsound.MessageBeep(winsound.MB_OK)
+        winsound.PlaySound("audio/urna_confirma.wav", winsound.SND_FILENAME | winsound.SND_ASYNC)
+
+    def tocar_som_tecla(self):
+        winsound.PlaySound("audio/urna_tecla.wav", winsound.SND_FILENAME | winsound.SND_ASYNC)
 
     def buscar_eleitor(self, titulo: str, cpf: str, rg: str):
         for eleitor in self.getEleitores():
             if eleitor["titulo"] == titulo and eleitor["cpf"] == cpf and eleitor["rg"] == rg:
-                if eleitor not in self.getVotos():
-                    return eleitor
-                else:
-                    messagebox.showerror("Erro", "Este eleitor já votou.")
-                    return None
+                for voto in self.getVotos():
+                    if voto["eleitor"] == eleitor["titulo"]:
+                        messagebox.showerror("Erro", "Este eleitor já votou.")
+                        return None
+                return eleitor
                 
         self.addTentativa()
 
         if self.getTentativas() >= 3:
-            messagebox.showerror("Erro", "Número máximo de tentativas excedido. Voto registrado como NULO.")
+            messagebox.showerror("Erro", "Número máximo de tentativas excedido.")
+            self.root.destroy()
         else: 
             messagebox.showerror("Erro", "Dados incorretos. Tente novamente.")
 
@@ -157,22 +186,21 @@ class Urna:
         return None
 
     def registrar_voto(self, numero_voto: str):
-        try:
-            if numero_voto == "branco":
-                self.addVoto({"nome": "BRANCO", "numero": "0", "partido": "NULO"})
-                self.tocar_som_confirmacao()
-                messagebox.showinfo("Voto registrado", "Voto em branco registrado com sucesso!")
+        if numero_voto == "branco":
+            self.addVoto({"nome": "BRANCO", "numero": "0", "partido": "NULO"})
+            return True
+        elif numero_voto == "nulo":
+            self.addVoto({"nome": "NULO", "numero": "0", "partido": "NULO"}) 
+            return True
+        else:
+            candidato = self.buscar_candidato(numero_voto)
+            if candidato:
+                self.addVoto(candidato)
+                
+                return True
             else:
-                candidato = self.buscar_candidato(numero_voto)
-                if candidato:
-                    self.addVoto(candidato)
-                    self.tocar_som_confirmacao()
-                    messagebox.showinfo("Voto registrado", f"Voto para {candidato['nome']} registrado com sucesso!")
-                else:
-                    messagebox.showerror("Erro", "Candidato não encontrado.")
-        except Exception as e:
-            print(e)
-            messagebox.showerror("Erro", "Erro ao registrar voto.")
+                messagebox.showerror("Erro", "Candidato não encontrado.")
+                return False
     
     def atualizar_tela(self, texto: str):
         self.tela_label.config(text=texto)
@@ -182,15 +210,19 @@ class Urna:
             self.voto_atual += numero
             self.atualizar_tela(self.getVotoAtual())
             self.preencher_quadrados()
+            self.candidato_default("Não Selecionado")
 
         if len(self.getVotoAtual()) == 2:
             candidato = self.buscar_candidato(self.getVotoAtual())
             if candidato:
                 self.mostrar_informacoes_candidato(candidato)
+            else:
+                self.candidato_default("Não Encontrado")
             
     def corrigir(self):
         self.setVotoAtual("")
         self.atualizar_tela("")
+        self.candidato_default("Não Selecionado")
         self.preencher_quadrados()
 
     def voto_branco(self):
@@ -200,6 +232,7 @@ class Urna:
 
     def preencher_quadrados(self):
         try:
+            self.tocar_som_tecla()
             for i, quadrado in enumerate(self.getQuadrados()):
                 if self.getVotoAtual() == "BRANCO":
                     quadrado.config(text="BRANCO")
@@ -213,17 +246,21 @@ class Urna:
 
     def confirmar(self):
         if self.getVotoAtual() == "BRANCO":
-            self.registrar_voto("branco")
+            confirmar = self.registrar_voto("branco")
+        elif len(self.getVotoAtual()) == 0:
+            confirmar = self.registrar_voto("nulo")
         else:
             candidato = self.buscar_candidato(self.getVotoAtual())
             if candidato:
-                self.registrar_voto(self.getVotoAtual())
+                confirmar = self.registrar_voto(self.getVotoAtual())
             else:
-                self.registrar_voto("nulo")
-        
-        self.corrigir()
-        self.limpar_teclado()
-        self.abrir_janela_cadastro()
+                messagebox.showerror("Erro", "Candidato não encontrado.")
+                confirmar = False
+                
+        if confirmar:
+            self.corrigir()
+            self.limpar_teclado()
+            self.abrir_janela_cadastro()
 
 
 
@@ -234,12 +271,24 @@ class Urna:
 
         try:
             imagem_candidato = Image.open(f"imagens/{candidato['numero']}.png")
-            imagem_candidato = imagem_candidato.resize((100, 100))
-            img = ImageTk.PhotoImage(imagem_candidato)
-            self.label_foto.config(image=img)
-            self.label_foto.image = img
         except FileNotFoundError:
-            self.label_foto.config(text="Imagem não encontrada", image=None)
+            imagem_candidato = Image.open(f"imagens/no-image.png")
+
+        imagem_candidato = imagem_candidato.resize((100, 100))
+        img = ImageTk.PhotoImage(imagem_candidato)
+        self.label_foto.config(image=img)
+        self.label_foto.image = img
+
+    def candidato_default(self, texto: str):
+        self.label_numero.config(text="Numero: "+texto)
+        self.label_nome.config(text="Candidato: "+texto)
+        self.label_partido.config(text="Partido: "+texto)
+
+        imagem_candidato = Image.open(f"imagens/no-image.png")
+        imagem_candidato = imagem_candidato.resize((100, 100))
+        img = ImageTk.PhotoImage(imagem_candidato)
+        self.label_foto.config(image=img)
+        self.label_foto.image = img
 
     def abrir_janela_cadastro(self):
         self.janela_cadastro = Toplevel()
@@ -294,7 +343,10 @@ class Urna:
 
         for i, (txt, cmd) in enumerate(Bts):
             btn = tk.Button(self.teclado_frame, text=txt, command=cmd, font=("Arial", 18), width=4, height=2)
-            btn.grid(row=i // 3, column=i % 3, padx=5, pady=5)
+            if txt == "0":  
+                btn.grid(row=3, column=1, padx=5, pady=5)
+            else:
+                btn.grid(row=i // 3, column=i % 3, padx=5, pady=5)
 
         self.frame_botoes = tk.Frame(self.frame_dir)
         self.frame_botoes.pack(pady=10)
@@ -302,24 +354,26 @@ class Urna:
         btn_branco = tk.Button(self.frame_botoes, text="BRANCO", command=self.voto_branco, font=("Arial", 14), bg="white", width=10)
         btn_branco.pack(side=tk.LEFT, padx=10)
 
+        btn_corrigir = tk.Button(self.frame_botoes, text="CORRIGIR", command=self.corrigir, font=("Arial", 14), bg="red", width=10)
+        btn_corrigir.pack(side=tk.LEFT, padx=10)
+
         btn_confirmar = tk.Button(self.frame_botoes, text="CONFIRMAR", command=self.confirmar, font=("Arial", 14), bg="green", width=10)
         btn_confirmar.pack(side=tk.LEFT, padx=10)
 
-        btn_corrigir = tk.Button(self.frame_botoes, text="CORRIGIR", command=self.corrigir, font=("Arial", 14), bg="yellow", width=10)
-        btn_corrigir.pack(side=tk.LEFT, padx=10)
+
 
     def limpar_teclado(self):
         self.teclado_frame.destroy()
         self.frame_botoes.destroy()
 
     def iniciar(self):
-        root = tk.Tk()
-        root.title("Urna Eletrônica")
-        root.geometry("700x500")
-        root.resizable(False, False)
+        self.root = tk.Tk()
+        self.root.title("Urna Eletrônica")
+        self.root.geometry("700x500")
+        self.root.resizable(False, False)
 
-        self.frame_esq = tk.Frame(root, width=350, height=500, bg="black")
-        self.frame_dir = tk.Frame(root, width=350, height=500)
+        self.frame_esq = tk.Frame(self.root, width=350, height=500, bg="black")
+        self.frame_dir = tk.Frame(self.root, width=350, height=500)
 
         self.frame_esq.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         self.frame_dir.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
@@ -339,13 +393,10 @@ class Urna:
         self.label_partido = tk.Label(self.frame_esq, text="Partido: ", font=("Arial", 14), bg="white")
         self.label_partido.pack()
 
+        self.candidato_default("Não Selecionado")
         self.abrir_janela_cadastro()
-        root.mainloop()
+        self.root.mainloop()
 
 if __name__ == "__main__":
     urna = Urna()
-    if not os.path.exists("candidatos.pkl"):
-        urna.criar_candidatos()
-    if not os.path.exists("eleitores.pkl"):
-        urna.criar_eleitores()
     urna.iniciar()

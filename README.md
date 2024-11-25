@@ -4,5 +4,5 @@ Atividade de Programação Orientada a Objetos do curso de Ciência da Computaç
 
 | Felipe de Lima Monteiro (FelipepileF1001) - 3695696 |
 | Gustavo da Silva Silvestre (TechGustKBT) - 7354473 |
-| Leo Caselato Vilaronga (NoSouless) - 8964753 |
+| Léo Caselato Vilaronga (NoSouless) - 8964753 |
 | Pablo da Silva Monhão (Tablito_o) - 3537908 |
