@@ -35,7 +35,7 @@ class Urna:
     frame_botoes: tk.Frame
 
     def __init__(self):
-        if not os.path.exists("pickle_files"):
+        if not os.path.exists("pickle_files"): 
             os.makedirs("pickle_files")
         if not os.path.exists("pickle_files/candidatos.pkl"):
             self.criar_candidatos()
@@ -221,11 +221,15 @@ class Urna:
             self.candidato_default("Não Selecionado")
 
         if len(self.getVotoAtual()) == 2:
-            candidato = self.buscar_candidato(self.getVotoAtual())
-            if candidato:
-                self.mostrar_informacoes_candidato(candidato)
-            else:
-                self.candidato_default("Não Encontrado")
+            if self.getVotoAtual() == "00":
+                self.atualizar_tela("NULO")
+                self.preencher_quadrados()
+            else: 
+                candidato = self.buscar_candidato(self.getVotoAtual())
+                if candidato:
+                    self.mostrar_informacoes_candidato(candidato)
+                else:
+                    self.candidato_default("Não Encontrado")
             
     def corrigir(self):
         self.setVotoAtual("")
@@ -244,6 +248,8 @@ class Urna:
             for i, quadrado in enumerate(self.getQuadrados()):
                 if self.getVotoAtual() == "BRANCO":
                     quadrado.config(text="BRANCO")
+                elif self.getVotoAtual() == "00":
+                    quadrado.config(text="NULO")
                 elif i < len(self.getVotoAtual()):
                     quadrado.config(text=self.getVotoAtual()[i])
                 else:
@@ -256,6 +262,9 @@ class Urna:
         if self.getVotoAtual() == "BRANCO":
             confirmar = self.registrar_voto("branco")
         elif len(self.getVotoAtual()) == 0:
+            messagebox.showerror("Erro", "Nenhum voto registrado.")
+            confirmar = False
+        elif self.getVotoAtual() == "00":
             confirmar = self.registrar_voto("nulo")
         else:
             candidato = self.buscar_candidato(self.getVotoAtual())
